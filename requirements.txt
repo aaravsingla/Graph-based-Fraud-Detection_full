@@ -1,0 +1,11 @@
+pyodbc
+boto3
+opensearch-py
+types-boto3
+requests
+gremlinpython
+networkx
+pandas
+python-louvain
+scipy
+tabulate

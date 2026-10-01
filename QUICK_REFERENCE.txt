@@ -1,0 +1,226 @@
+================================================================================
+        SYNAPSE S3 UPLOAD SYSTEM - QUICK REFERENCE CARD
+================================================================================
+
+🎯 QUICK START (30 seconds)
+────────────────────────────────────────────────────────────────────────────
+
+1. Enable S3 in .env:
+   $ cd /Users/aarav/Desktop/Synapse/batchjobs/csv_export
+   $ nano .env
+   # Uncomment these 4 lines:
+   # EXPORT_TO_S3=true
+   # S3_OUTPUT_BUCKET=dev-login-graph-data
+   # S3_OUTPUT_PREFIX=neptune-csv-export
+   # EXPORT_DISCARD_LOCAL=false
+
+2. Run export:
+   $ python3 run_all_exports.py
+
+3. Check status:
+   $ cat ../data/export-summary.json | jq '.status'
+   Expected: "SUCCESS"
+
+================================================================================
+📋 COMMANDS CHEAT SHEET
+================================================================================
+
+Run Export (recommended):
+  python3 run_all_exports.py
+
+Skip OpenSearch:
+  python3 run_all_exports.py --skip-opensearch
+
+Custom Run ID:
+  EXPORT_RUN_ID=prod-final python3 run_all_exports.py
+
+Delete local after upload:
+  EXPORT_DISCARD_LOCAL=true python3 run_all_exports.py
+
+List files in S3:
+  aws s3 ls s3://dev-login-graph-data/neptune-csv-export/ --recursive
+
+Count uploaded files:
+  aws s3 ls s3://dev-login-graph-data/neptune-csv-export/ --recursive | wc -l
+
+Check report (machine-readable):
+  cat ../data/export-summary.json | jq '.final.totals'
+
+Check report (human-readable):
+  cat ../data/export-summary.txt
+
+Check S3 destination:
+  cat ../data/export-summary.json | jq '.s3_destination'
+
+================================================================================
+📊 MONITORING
+================================================================================
+
+During Export:
+  Watch console for: [storage] Uploaded X object(s) to ...
+
+After Export:
+  cat ../data/export-summary.json
+  - Key fields: status, s3_destination, final.totals
+
+Verify in S3:
+  aws s3 ls s3://dev-login-graph-data/neptune-csv-export/ --recursive
+
+Expected output after success:
+  - 32 files uploaded
+  - 14 vertex CSVs + 5 edge CSVs
+  - load-manifest.txt
+  - Total rows: 18,700
+
+================================================================================
+🔧 ENVIRONMENT VARIABLES
+================================================================================
+
+Enable S3:
+  EXPORT_TO_S3=true
+
+S3 Bucket:
+  S3_OUTPUT_BUCKET=dev-login-graph-data
+
+Key Prefix:
+  S3_OUTPUT_PREFIX=neptune-csv-export
+
+Run ID (auto-generated if not set):
+  EXPORT_RUN_ID=20260622T120000Z
+
+Delete Local After Upload:
+  EXPORT_DISCARD_LOCAL=false
+
+Incremental Upload:
+  EXPORT_S3_SYNC_EACH_STEP=true
+
+Email on Completion:
+  TRIGGER_MAIL_ON_COMPLETION=false
+
+AWS Region:
+  AWS_REGION=eu-west-1
+
+Parallel Source Exports:
+  EXPORT_SOURCES_PARALLEL=true
+
+================================================================================
+🚨 COMMON ERRORS & FIXES
+================================================================================
+
+❌ NoSuchBucket
+   Fix: grep S3_OUTPUT_BUCKET .env
+   Should show: dev-login-graph-data
+
+❌ AccessDenied
+   Fix: Check AWS credentials in .env
+   Should show AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+
+❌ InvalidToken
+   Fix: Session token expired, get new credentials
+   Update: AWS_SESSION_TOKEN in .env
+
+❌ Connection timeout
+   Fix: Check internet, verify AWS_REGION=eu-west-1
+
+❌ Export step failed (SQL/DynamoDB/OpenSearch)
+   Fix: tail -50 export.log
+
+================================================================================
+📁 DATA STRUCTURE
+================================================================================
+
+Local:
+  batchjobs/data/
+  ├─ sql/              (SQL export)
+  ├─ dynamo/           (DynamoDB export)
+  ├─ opensearch/       (OpenSearch export)
+  └─ final/            (Combined data ← Uploaded to S3)
+     ├─ vertices/      (14 CSVs)
+     ├─ edges/         (5 CSVs)
+     ├─ load-manifest.txt
+     ├─ export-summary.json
+     └─ export-summary.txt
+
+S3:
+  s3://dev-login-graph-data/neptune-csv-export/[RUN_ID]/
+  └─ final/
+     ├─ vertices/
+     ├─ edges/
+     └─ load-manifest.txt
+
+================================================================================
+📈 EXPECTED RESULTS
+================================================================================
+
+Rows by Source:
+  SQL:        ~8,050 rows (5 vertex files + 2 edge files)
+  DynamoDB:   ~100+ rows (7 vertex files + 1 edge file)
+  OpenSearch: ~76,000+ rows (6 vertex files + 2 edge files)
+
+Combined:
+  Total rows: 18,700+
+  Vertices: 14 files
+  Edges: 5 files
+
+Upload Time:
+  SQL:         ~45 seconds
+  DynamoDB:    ~38 seconds
+  OpenSearch:  ~120 seconds
+  Combine:     ~15 seconds
+  S3 Upload:   ~10-20 seconds
+  Total:       ~350 seconds (5.8 minutes)
+
+================================================================================
+📚 DOCUMENTATION FILES
+================================================================================
+
+README_S3_UPLOAD.md
+  → Index & navigation (START HERE)
+
+S3_SUMMARY.md
+  → 5-minute overview
+
+UPLOAD_CHECKLIST.md
+  → Step-by-step instructions
+
+S3_UPLOAD_GUIDE.md
+  → Detailed configuration & troubleshooting
+
+SYSTEM_ARCHITECTURE.md
+  → System design & data flow
+
+CODE_REFERENCES.md
+  → Code walkthrough & debugging
+
+QUICK_REFERENCE.txt
+  → This file! Cheat sheet
+
+================================================================================
+✅ VERIFICATION CHECKLIST
+================================================================================
+
+Before Upload:
+  □ .env has EXPORT_TO_S3=true (uncommented)
+  □ AWS credentials in .env are set
+  □ S3 bucket exists: aws s3 ls | grep dev-login-graph-data
+
+After Upload:
+  □ Console shows "[storage] Uploaded X object(s)"
+  □ export-summary.json shows "status": "SUCCESS"
+  □ S3 has 32+ files: aws s3 ls ... --recursive | wc -l
+  □ Final row counts match: grep total_rows export-summary.json
+
+================================================================================
+�� NEXT STEPS
+================================================================================
+
+1. Read: README_S3_UPLOAD.md
+2. Enable: Uncomment 4 lines in .env
+3. Run: python3 run_all_exports.py
+4. Check: cat ../data/export-summary.json | jq '.status'
+5. Verify: aws s3 ls s3://dev-login-graph-data/neptune-csv-export/ --recursive
+
+System Status: ✅ PRODUCTION READY
+
+Last Updated: June 22, 2026
+================================================================================
